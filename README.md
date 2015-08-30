@@ -2,5 +2,8 @@
 
 To run
 
-$ cd bin
+
+$ cd bin  
+
+
 $ python script.py pm_file image_file flavor_file
