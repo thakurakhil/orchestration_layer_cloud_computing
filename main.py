@@ -141,7 +141,6 @@ def vm_create():
     <domain type='qemu' id='%s'>
     <name>%s</name>
 	<memory>%s</memory>
-	<currentMemory>131072</currentMemory>
 	<vcpu>%s</vcpu>
     <os>
     <type>hvm</type>
@@ -168,6 +167,14 @@ def vm_create():
         dom.create()
         result = "{\n%s\n}" % str(vmid)
         conn.close()
+        try :       
+            fileopen = open("VM_INFO","a")
+            toFile = str(vmid) +  "\t\t" + VM_name + "\t\t" + selected_pm + "\t\t" + str(VM_type_id) + "\t\t" + str(pmid[selected_pm]) + "\n"               
+            fileopen.write(toFile)
+            fileopen.close()
+        except:
+            print "unable to write to file"
+
         #return result
         return jsonify(vmid=str(vmid))
     except Exception,e: 
@@ -183,7 +190,10 @@ def vm_query():
 
     args = request.args
     VM_id = str(args['vmid'])
-    return jsonify(vmid=VM_id, name=VM[str(VM_id)]['Name'], instance_type=VM[str(VM_id)]['instance_type'], pmid=VM[str(VM_id)]['pmid'])
+    try:
+        return jsonify(vmid=VM_id, name=VM[str(VM_id)]['Name'], instance_type=VM[str(VM_id)]['instance_type'], pmid=VM[str(VM_id)]['pmid'])
+    except:
+        return jsonify(success="0")
 
 @app.route('/server/vm/destroy/' , methods = ['GET'])
 def vm_destroy():
@@ -198,7 +208,19 @@ def vm_destroy():
 	if req.isActive():
 	    req.destroy()
 	req.undefine()
-	del VM[str(VM_id)]
+	
+    try:       
+        fileopen = open("VM_INFO","r+")
+        d = fileopen.readlines()
+        fileopen.seek(0)
+        for line in d:
+            if line != str(VM_id) +  "\t\t" + VM[str(VM_id)]["Name"] + "\t\t" + VM[str(VM_id)]["PM"] + "\t\t" + VM[str(VM_id)]["instance_type"] + "\t\t" + VM[str(VM_id)]["pmid"] + "\n"
+                fileopen.write(line)
+        fileopen.truncate()
+        fileopen.close()
+    except:
+        print "unable to write to file"
+    del VM[str(VM_id)]
 	return jsonify(status=1)
     except Exception,e: 
     	print str(e)
@@ -212,11 +234,17 @@ def vm_types():
 def list_pms():
 	return jsonify(pmids=pmid.values())
 
-@app.route('/server/pm/pmid/listvms', methods=['GET'])
+@app.route('/server/pm/listvms', methods=['GET'])
 def list_vms():
-    return jsonify(vmids=VM.keys())
+    args = request.args
+    PM_id = str(args['pmid'])
+    vm_list = [];
+    for i in VM.iteritems():
+        if(str(i[1]['pmid']) == PM_id):
+            vm_list.append(i[0])
+    return jsonify(vmids=vm_list)
 
-@app.route('/server/pm/pmid', methods=['GET'])
+@app.route('/server/pm/query', methods=['GET'])
 def pm_query():
     args = request.args
     PM_id = str(args['pmid'])
@@ -247,4 +275,19 @@ if __name__ == '__main__':
     jsonifyTypes(vm_types_filename)
     get_machines(sys.argv[1])
     get_images(sys.argv[2])
+    try :       
+        fileopen = open("VM_INFO","r+")
+        d = fileopen.readlines()
+        fileopen.seek(0)
+        for i in d:
+            if i == "VM_ID" +  "\t\t" + "VM_name" + "\t\t" + "selected_pm" + "\t\t" + "VM_type_id" + "\t\t" + "pmid" + "\n":
+                break
+            else:
+                fileopen.write("VM_ID" +  "\t\t" + "VM_name" + "\t\t" + "selected_pm" + "\t\t" + "VM_type_id" + "\t\t" + "pmid" + "\n")
+                break
+        fileopen.write(toFile)
+        fileopen.close()
+    except:
+        print "unable to write to file"
+
     app.run(debug = True)
